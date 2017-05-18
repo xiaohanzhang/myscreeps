@@ -1,0 +1,25 @@
+{
+  "name": "screeps",
+  "version": "0.0.0",
+  "description": "screeps script",
+  "main": "main.js",
+  "scripts": {
+    "start": "webpack --progress --watch",
+    "build": "webpack --progress",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "xiaohan.zhang@gmail.com",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-core": "^6.24.1",
+    "babel-loader": "^7.0.0",
+    "babel-preset-env": "^1.4.0",
+    "grunt": "^1.0.1",
+    "grunt-screeps": "^1.2.1",
+    "grunt-webpack": "^3.0.0",
+    "webpack": "^2.5.1"
+  },
+  "dependencies": {
+    "lodash": "^4.17.4"
+  }
+}
