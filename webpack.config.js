@@ -11,6 +11,7 @@ module.exports = {
       test: /\.js$/, exclude: /node_modules/, loader: 'babel-loader'},
     ],
   },
+  devtool: 'nosources-source-map',
 };
 /*
   function(node_env) {

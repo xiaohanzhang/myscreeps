@@ -24,6 +24,7 @@ each(Game.spawns, (spawn) => {
       sources: map(room.find(FIND_SOURCES), source => ({
         id: source.id,
         harvesters: [],
+        carriers: [],
       })),
       spawn: spawn.id,
       builders: [],
@@ -56,6 +57,8 @@ const increaseCreep = (spawn, body, names) => {
   }
 }
 
+
+
 each(Memory.rooms, (room, roomName) => {
   const spawn = Game.getObjectById(room.spawn);
   let enoughHarvesters = true;
@@ -63,17 +66,44 @@ each(Memory.rooms, (room, roomName) => {
     delete Memory.rooms[room.name];
     return;
   }
+
+  if (!Memory.cc) {
+    Memory.cc = spawn.createCreep([
+      WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, 
+    ]);
+  }
+  const cc = Game.creeps[Memory.cc];
+  if (cc) {
+    const controller = Game.rooms[roomName].controller;
+    if (cc.upgradeController(controller) === ERR_NOT_IN_RANGE) {
+      cc.moveTo(controller);
+    }
+  }
+
   each(room.sources, (_source) => {
-    const { id, harvesters } = _source;
+    if (!_source.carriers) {
+      _source.carriers = [];
+    }
+    const { id, harvesters, carriers } = _source;
     const source = Game.getObjectById(id);
-    if (harvesters.length < 3) {
+    if (harvesters.length < 2) {
       enoughHarvesters = false;
       increaseCreep(spawn, [ 
-        WORK, WORK, WORK, CARRY, CARRY, CARRY,
-        MOVE, MOVE,
+        WORK, WORK, WORK, WORK, CARRY, CARRY,
+        MOVE, 
       ], harvesters);
     }
 
+    if (harvesters.length > 1 && carriers.length < 3) {
+      increaseCreep(spawn, [ 
+        //CARRY, CARRY, 
+        CARRY, CARRY, CARRY,
+        //MOVE, MOVE, 
+        MOVE, MOVE, MOVE, 
+      ], _source.carriers);
+    }
+
+    const fulls = [];
     _source.harvesters = filter(harvesters, (name) => {
       const creep = Game.creeps[name];
       if (!creep) {
@@ -82,22 +112,45 @@ each(Memory.rooms, (room, roomName) => {
       if (creep.spawning) {
         return true;
       }
-      if (creep.carryCapacity - sum(values(creep.carry)) < 20) {
-        const needFillId = get(room, 'needFill.0');
-        transferAt(creep, needFillId 
-          ? Game.getObjectById(needFillId) 
-          : Game.rooms[roomName].controller);
-      } else {
-        harvestAt(creep, source);
+      if (creep.carryCapacity - sum(values(creep.carry)) < 10) {
+        fulls.push(creep);
       }
-      return !!creep;
+      harvestAt(creep, source);
+      return true;
+    });
+
+    _source.carriers = filter(carriers, (name) => {
+      const creep = Game.creeps[name];
+      if (creep.carryCapacity > sum(values(creep.carry))) {
+        if (fulls.length > 0) {
+          if (creep.pos.isNearTo(fulls[0])) {
+            creep.moveTo(fulls[0]);
+          } else {
+            fulls[0].transfer(creep);
+          }
+        } else {
+          creep.moveTo(source);
+        }
+      } else {
+        const needFillId = get(room, 'needFill.0');
+        const nf = Game.getObjectById(needFillId);
+        if (nf) {
+          transferAt(creep, nf);
+        } else if (creep.pos.isNearTo(cc)) {
+          creep.drop(RESOURCE_ENERGY);
+        } else {
+          creep.moveTo(cc);
+        }
+      }
     });
   });
 
+    /*
   if (!room.builders) {
     room.builders = [];
   }
-  if (room.builders.length < 4 && enoughHarvesters) {
+  const constructionSite = find(Game.constructionSites);
+  if (room.builders.length < 4 && enoughHarvesters && constructionSite) {
     increaseCreep(spawn, [ 
       WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, 
     ], room.builders);
@@ -111,19 +164,15 @@ each(Memory.rooms, (room, roomName) => {
     if (creep.spawning) {
       return true;
     }
-    if (sum(values(creep.carry)) < 10) {
-      if (enoughHarvesters) {
-        withdrawAt(creep, spawn);
-      }
+    if (constructionSite) {
+      buildAt(creep, constructionSite);
     } else {
-      const constructionSite = find(Game.constructionSites);
-      if (constructionSite) {
-        buildAt(creep, constructionSite);
-      } else {
-        transferAt(creep, Game.rooms[roomName].controller);
-      }
+      const needFillId = get(room, 'needFill.0');
+      const nf = Game.getObjectById(needFillId);
+      transferAt(creep, nf);
     }
     return true;
   });
+  */
   logCpu();
 });
